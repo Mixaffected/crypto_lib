@@ -1,76 +1,13 @@
-use argon2::{self, Config, Variant, Version};
-use rand::{self, rngs::ThreadRng};
+use rand::rngs::ThreadRng;
 use rsa::{
     pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPrivateKey, EncodeRsaPublicKey},
     pkcs8::LineEnding,
     Pkcs1v15Encrypt, Pkcs1v15Sign, RsaPrivateKey, RsaPublicKey,
 };
-use sha256;
 use std::{
-    fs::{self, File},
-    io::{Read, Write},
-    os,
-    path::Path,
+    fs::File,
+    io::{self, Read, Write},
 };
-use std::{io, thread};
-
-pub struct Salter {
-    pub val: String,
-    pub salt: String,
-    pub salted: String,
-}
-impl Salter {
-    pub fn new(val: String, salt: String) -> Salter {
-        let mut salted = val.clone();
-        let prep_salt = Salter::prepare_salt(&salt);
-        salted.push_str(&prep_salt);
-
-        Salter { val, salt, salted }
-    }
-
-    fn prepare_salt(salt: &String) -> String {
-        let mut salt = salt.clone();
-
-        salt.insert(0, ':');
-
-        salt
-    }
-}
-
-pub struct ARGON2 {}
-// ARGON2
-impl ARGON2 {
-    pub fn new() -> ARGON2 {
-        ARGON2 {}
-    }
-
-    pub fn argon2(val: String, config: Config) -> String {
-        argon2::hash_encoded(val.as_bytes(), b"", &config).expect("Could not hash value!")
-    }
-
-    pub fn argon2_salt(val: String, salt: String, config: Config) -> String {
-        argon2::hash_encoded(val.as_bytes(), salt.as_bytes(), &config)
-            .expect("Could not hash value!")
-    }
-}
-
-pub struct SHA256 {}
-// SHA256
-impl SHA256 {
-    pub fn new() -> SHA256 {
-        SHA256 {}
-    }
-
-    pub fn sha256(val: &String) -> String {
-        sha256::digest(val)
-    }
-
-    pub fn sha256_salt(val: String, salt: String) -> String {
-        let salted = Salter::new(val, salt);
-
-        sha256::digest(salted.salted)
-    }
-}
 
 pub struct RSA {
     private_key: RsaPrivateKey,
@@ -168,7 +105,7 @@ impl RSA {
             Err(e) => return Result::Err(e),
         };
 
-        let priv_pem = RSA::get_private_key(&self);
+        let priv_pem = RSA::get_private_key_pem(&self);
 
         let result = priv_file.write_all(priv_pem.as_bytes());
         match result {
@@ -182,7 +119,7 @@ impl RSA {
             Err(e) => return Result::Err(e),
         };
 
-        let pub_pem = RSA::get_public_key(&self);
+        let pub_pem = RSA::get_public_key_pem(&self);
 
         let result = pub_file.write_all(pub_pem.as_bytes());
         match result {
@@ -193,13 +130,13 @@ impl RSA {
         Result::Ok(())
     }
 
-    pub fn get_public_key(&self) -> String {
+    pub fn get_public_key_pem(&self) -> String {
         self.public_key
             .to_pkcs1_pem(LineEnding::LF)
             .expect("Could not get public pem!")
     }
 
-    pub fn get_private_key(&self) -> String {
+    pub fn get_private_key_pem(&self) -> String {
         self.private_key
             .to_pkcs1_pem(LineEnding::LF)
             .expect("Could not get private pem!")
@@ -210,13 +147,69 @@ impl RSA {
         let mut rng = RSA::get_rng();
         self.public_key
             .encrypt(&mut rng, Pkcs1v15Encrypt, data)
-            .expect("Could not encrypt!")
+            .expect("Could not encrypt data!")
     }
 
     pub fn decrypt(&self, data: &[u8]) -> Vec<u8> {
         self.private_key
             .decrypt(Pkcs1v15Encrypt, data)
-            .expect("Could not decript!")
+            .expect("Could not decript data!")
+    }
+
+    fn get_rng() -> ThreadRng {
+        rand::thread_rng()
+    }
+}
+
+pub struct RSAConnection {
+    public_key: RsaPublicKey,
+}
+impl RSAConnection {
+    pub fn new(pub_key_pem: &str) -> RSAConnection {
+        let pub_key = RsaPublicKey::from_pkcs1_pem(pub_key_pem)
+            .expect("Could not create public key from pem!");
+
+        RSAConnection {
+            public_key: pub_key,
+        }
+    }
+
+    pub fn from_file_pem(path: &str) -> RSAConnection {
+        let mut pub_file = File::open(path).expect("Could not open public key pem file!");
+
+        let mut pub_key_pem = String::new();
+        pub_file
+            .read_to_string(&mut pub_key_pem)
+            .expect("Could not read public pem file!");
+
+        let public_key = RsaPublicKey::from_pkcs1_pem(&pub_key_pem).expect("Could not get ");
+
+        RSAConnection { public_key }
+    }
+
+    pub fn save_connection_pem(&self, file_path: &str) -> Result<(), io::Error> {
+        let connection_file = File::create(file_path);
+        let mut connection_file = match connection_file {
+            Ok(connection_file) => connection_file,
+            Err(e) => return Result::Err(e),
+        };
+
+        let connection_key_pem = self
+            .public_key
+            .to_pkcs1_pem(LineEnding::LF)
+            .expect("Could not get pem from connection key!");
+        let result = connection_file.write_all(connection_key_pem.as_bytes());
+        match result {
+            Ok(_) => return Result::Ok(()),
+            Err(e) => return Result::Err(e),
+        }
+    }
+
+    pub fn encrypt(&self, data: &[u8]) -> Vec<u8> {
+        let mut rng = RSAConnection::get_rng();
+        self.public_key
+            .encrypt(&mut rng, Pkcs1v15Encrypt, data)
+            .expect("Could not encrypt data!")
     }
 
     fn get_rng() -> ThreadRng {
