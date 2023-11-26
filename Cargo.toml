@@ -1,0 +1,12 @@
+[package]
+name = "crypto_lib"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.5"
+rsa = "0.9.4"
+rust-argon2 = "2.0.0"
+sha256 = "1.4.0"
