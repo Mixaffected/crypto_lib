@@ -103,7 +103,7 @@ impl RSA {
             None => "public.key",
         };
 
-        let priv_file = File::create(priv_file_path);
+        let priv_file = File::open(priv_file_path);
         let mut priv_file = match priv_file {
             Ok(priv_file) => priv_file,
             Err(e) => return Result::Err(e),
@@ -122,7 +122,7 @@ impl RSA {
             Err(e) => panic!("{}", e),
         };
 
-        let pub_file = File::create(pub_file_path);
+        let pub_file = File::open(pub_file_path);
         let mut pub_file = match pub_file {
             Ok(pub_file) => pub_file,
             Err(e) => return Result::Err(e),
@@ -147,8 +147,22 @@ impl RSA {
         })
     }
 
-    pub fn save_keys(&self) -> Result<(), io::Error> {
-        let priv_file = File::create("private.key");
+    pub fn save_keys(
+        &self,
+        priv_file_path: Option<&str>,
+        pub_file_path: Option<&str>,
+    ) -> Result<(), io::Error> {
+        let priv_file_path = match priv_file_path {
+            Some(priv_file_path) => priv_file_path,
+            None => "private.key",
+        };
+
+        let pub_file_path = match pub_file_path {
+            Some(pub_file_path) => pub_file_path,
+            None => "public.key",
+        };
+
+        let priv_file = File::create(priv_file_path);
         let mut priv_file = match priv_file {
             Ok(priv_file) => priv_file,
             Err(e) => return Result::Err(e),
@@ -162,7 +176,7 @@ impl RSA {
             Err(e) => return Result::Err(e),
         }
 
-        let pub_file = File::create("public.key");
+        let pub_file = File::create(pub_file_path);
         let mut pub_file = match pub_file {
             Ok(pub_file) => pub_file,
             Err(e) => return Result::Err(e),
