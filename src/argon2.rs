@@ -15,3 +15,19 @@ impl ARGON2 {
             .expect("Could not hash value!")
     }
 }
+
+pub struct ARGON2ConfWizard {}
+impl<'a> ARGON2ConfWizard {
+    pub fn new(hash_length: u32, lanes: u32, mem_cost: u32, time_cost: u32) -> Config<'a> {
+        Config {
+            ad: &[],
+            hash_length,
+            lanes,
+            mem_cost,
+            secret: &[],
+            time_cost,
+            variant: argon2::Variant::Argon2id,
+            version: argon2::Version::Version13,
+        }
+    }
+}
