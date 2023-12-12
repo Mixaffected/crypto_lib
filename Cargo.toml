@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 rand = "0.8.5"
-rsa = "0.9.4"
+rsa = "0.9.6"
 rust-argon2 = "2.0.0"
 sha256 = "1.4.0"

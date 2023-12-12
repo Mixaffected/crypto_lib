@@ -2,7 +2,7 @@ use rand::rngs::ThreadRng;
 use rsa::{
     pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPrivateKey, EncodeRsaPublicKey},
     pkcs8::LineEnding,
-    Pkcs1v15Encrypt, Pkcs1v15Sign, RsaPrivateKey, RsaPublicKey,
+    Pkcs1v15Encrypt, RsaPrivateKey, RsaPublicKey,
 };
 use std::{
     fs::File,
@@ -14,10 +14,17 @@ pub struct RSA {
     public_key: RsaPublicKey,
 }
 impl RSA {
-    pub fn new() -> RSA {
+    pub fn new(bit_size: Option<usize>) -> RSA {
+        // bit_size standart = 2048
+        let bit_size = match bit_size {
+            Some(bit_size) => bit_size,
+            None => 2048,
+        };
+
+        // RSA
         let mut rng = RSA::get_rng();
         let private_key =
-            RsaPrivateKey::new(&mut rng, 4096).expect("Could not generate private key!");
+            RsaPrivateKey::new(&mut rng, bit_size).expect("Could not generate private key!");
         let public_key = RsaPublicKey::from(&private_key);
 
         RSA {
